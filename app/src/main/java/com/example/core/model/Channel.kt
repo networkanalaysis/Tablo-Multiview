@@ -34,7 +34,8 @@ data class Channel(
     val groupTitle: String = "OTA Broadcast",
     val isFavorite: Boolean = false,
     val currentProgram: ProgramGuideItem? = null,
-    val resolution: String = "1080p",
+    val upcomingProgram: ProgramGuideItem? = null,
+    val resolution: String = "1080i",
     val signalQuality: Int = 100
 )
 
@@ -60,4 +61,13 @@ data class MultiviewSlot(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isMuted: Boolean = false
+)
+
+data class MultiviewPreset(
+    val id: String,
+    val name: String,
+    val arrangement: MultiviewLayout,
+    val channelIds: List<String> = emptyList(),
+    val channelNames: List<String> = emptyList(),
+    val createdAtEpoch: Long = System.currentTimeMillis()
 )

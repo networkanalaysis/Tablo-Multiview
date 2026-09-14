@@ -3,26 +3,26 @@ package com.example.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CastConnected
-import androidx.compose.material.icons.filled.CropLandscape
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LiveTv
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Router
-import androidx.compose.material.icons.filled.ViewQuilt
-import androidx.compose.material.icons.filled.ViewSidebar
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -30,32 +30,40 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.core.model.MultiviewLayout
-import com.example.ui.theme.AerioCardDark
-import com.example.ui.theme.AerioCyan
-import com.example.ui.theme.AerioNeonGreen
+
+private val TabloPurple = Color(0xFF6B4EB2)
+private val TabloPurpleActive = Color(0xFF5A4585)
+private val NavBg = Color(0xFF14161C)
+private val PillContainerBg = Color(0xFF1D2028)
+private val TextMuted = Color(0xFF8F93A0)
+
+enum class TabloNavTab(val title: String) {
+    SEARCH("Search"),
+    HOME("Home"),
+    GUIDE("Guide"),
+    LIBRARY("Library"),
+    LAYOUTS("Layouts")
+}
 
 @Composable
 fun TopBarNav(
-    selectedTab: Int,
-    onSelectTab: (Int) -> Unit,
-    currentLayout: MultiviewLayout,
-    onSelectLayout: (MultiviewLayout) -> Unit,
-    tabloConnected: Boolean,
-    activeTuners: Int = 4,
+    activeTab: TabloNavTab,
+    onTabSelected: (TabloNavTab) -> Unit,
+    onSettingsClick: () -> Unit,
+    isCreatingLayout: Boolean = false,
+    onBackClick: () -> Unit = {},
+    onSaveLayoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = AerioCardDark,
+        color = NavBg,
         modifier = modifier
             .fillMaxWidth()
-            .border(width = 1.dp, color = Color(0xFF1E293B))
+            .border(width = 1.dp, color = Color(0xFF22252F))
     ) {
         Row(
             modifier = Modifier
@@ -64,190 +72,116 @@ fun TopBarNav(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Brand & Logo
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Left Action: Back button if creating layout, otherwise Brand / Logo
+            if (isCreatingLayout) {
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = AerioCyan,
-                    modifier = Modifier.size(32.dp)
+                    shape = CircleShape,
+                    color = Color(0xFF1E212B),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF333640)),
+                    modifier = Modifier.size(38.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.LiveTv,
-                            contentDescription = "AerioTV",
-                            tint = Color.Black,
-                            modifier = Modifier.size(20.dp)
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "AerioTV",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.5.sp
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = Color(0xFF0284C7).copy(alpha = 0.3f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AerioCyan.copy(alpha = 0.5f))
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onTabSelected(TabloNavTab.GUIDE) }
                 ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = TabloPurple,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.LiveTv,
+                                contentDescription = "Tablo",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "TABLO OTA",
-                        color = AerioCyan,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        text = "Tablo",
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            // Main Nav Tabs
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // Center: Pill Navigation Bar (Matches Screenshots 1 & 2: Search | Home | Guide | Library | Layouts)
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = PillContainerBg,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2B2E38)),
+                modifier = Modifier.padding(horizontal = 8.dp)
             ) {
-                NavTabItem(
-                    label = "Multiview",
-                    icon = Icons.Default.GridView,
-                    isSelected = selectedTab == 0,
-                    onClick = { onSelectTab(0) }
-                )
-                NavTabItem(
-                    label = "Live Guide",
-                    icon = Icons.Default.LiveTv,
-                    isSelected = selectedTab == 1,
-                    onClick = { onSelectTab(1) }
-                )
-                NavTabItem(
-                    label = "Tablo & Sources",
-                    icon = Icons.Default.Router,
-                    isSelected = selectedTab == 2,
-                    onClick = { onSelectTab(2) }
-                )
+                Row(
+                    modifier = Modifier
+                        .padding(3.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TabloNavTab.values().forEach { tab ->
+                        val isSelected = activeTab == tab
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isSelected) TabloPurpleActive else Color.Transparent,
+                            modifier = Modifier.clickable { onTabSelected(tab) }
+                        ) {
+                            Text(
+                                text = tab.title,
+                                color = if (isSelected) Color.White else TextMuted,
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
             }
 
-            // Right side: Layout Switcher (if on Multiview tab) or Tuner indicator
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (selectedTab == 0) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF070B14))
-                            .padding(2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+            // Right Action: Save pill button if creating layout, otherwise Settings / Filter icons
+            if (isCreatingLayout) {
+                Button(
+                    onClick = onSaveLayoutClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TabloPurple,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text(
+                        text = "Save",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier.size(38.dp)
                     ) {
-                        LayoutSwitchButton(
-                            icon = Icons.Default.GridView,
-                            tooltip = "Quad 2x2",
-                            isSelected = currentLayout == MultiviewLayout.QUAD_GRID,
-                            onClick = { onSelectLayout(MultiviewLayout.QUAD_GRID) }
-                        )
-                        LayoutSwitchButton(
-                            icon = Icons.Default.ViewSidebar,
-                            tooltip = "Dual Split",
-                            isSelected = currentLayout == MultiviewLayout.DUAL_SPLIT,
-                            onClick = { onSelectLayout(MultiviewLayout.DUAL_SPLIT) }
-                        )
-                        LayoutSwitchButton(
-                            icon = Icons.Default.ViewQuilt,
-                            tooltip = "1+2 Focus",
-                            isSelected = currentLayout == MultiviewLayout.TRIPLE_FOCUS,
-                            onClick = { onSelectLayout(MultiviewLayout.TRIPLE_FOCUS) }
-                        )
-                        LayoutSwitchButton(
-                            icon = Icons.Default.CropLandscape,
-                            tooltip = "Single Fullscreen",
-                            isSelected = currentLayout == MultiviewLayout.SINGLE,
-                            onClick = { onSelectLayout(MultiviewLayout.SINGLE) }
-                        )
-                    }
-                } else {
-                    // Tablo Tuners status pill
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0xFF1E293B))
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(if (tabloConnected) AerioNeonGreen else Color(0xFFF59E0B))
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (tabloConnected) "Tablo Online ($activeTuners Tuners)" else "Tablo Ready",
-                            color = Color(0xFFE2E8F0),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings & Device",
+                            tint = TextMuted,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun NavTabItem(
-    label: String,
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        color = if (isSelected) Color(0xFF1E293B) else Color.Transparent,
-        shape = RoundedCornerShape(6.dp),
-        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, AerioCyan.copy(alpha = 0.6f)) else null,
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (isSelected) AerioCyan else Color(0xFF94A3B8),
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = label,
-                color = if (isSelected) Color.White else Color(0xFF94A3B8),
-                fontSize = 13.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
-private fun LayoutSwitchButton(
-    icon: ImageVector,
-    tooltip: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        color = if (isSelected) AerioCyan else Color.Transparent,
-        shape = RoundedCornerShape(4.dp),
-        modifier = Modifier
-            .size(30.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = tooltip,
-                tint = if (isSelected) Color.Black else Color(0xFF94A3B8),
-                modifier = Modifier.size(18.dp)
-            )
         }
     }
 }

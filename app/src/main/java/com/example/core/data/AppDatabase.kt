@@ -11,6 +11,8 @@ import androidx.room.RoomDatabase
 import androidx.room.Update
 import com.example.core.model.Channel
 import com.example.core.model.MediaSourceConfig
+import com.example.core.model.MultiviewLayout
+import com.example.core.model.MultiviewPreset
 import com.example.core.model.ProgramGuideItem
 import com.example.core.model.SourceType
 import kotlinx.coroutines.flow.Flow
@@ -33,7 +35,11 @@ data class ChannelEntity(
     val programDesc: String?,
     val programStart: Long,
     val programEnd: Long,
-    val programCategory: String?
+    val programCategory: String?,
+    val upProgramTitle: String? = null,
+    val upProgramDesc: String? = null,
+    val upProgramStart: Long = 0L,
+    val upProgramEnd: Long = 0L
 ) {
     fun toDomain(): Channel {
         val prog = if (!programTitle.isNullOrBlank()) {
@@ -44,6 +50,18 @@ data class ChannelEntity(
                 description = programDesc ?: "",
                 startTimeEpoch = programStart,
                 endTimeEpoch = programEnd,
+                category = programCategory ?: "General"
+            )
+        } else null
+
+        val upProg = if (!upProgramTitle.isNullOrBlank()) {
+            ProgramGuideItem(
+                id = "up_prog_$id",
+                channelId = id,
+                title = upProgramTitle,
+                description = upProgramDesc ?: "",
+                startTimeEpoch = upProgramStart,
+                endTimeEpoch = upProgramEnd,
                 category = programCategory ?: "General"
             )
         } else null
@@ -67,6 +85,7 @@ data class ChannelEntity(
             groupTitle = groupTitle,
             isFavorite = isFavorite,
             currentProgram = prog,
+            upcomingProgram = upProg,
             resolution = resolution
         )
     }
@@ -90,7 +109,11 @@ data class ChannelEntity(
                 programDesc = channel.currentProgram?.description,
                 programStart = channel.currentProgram?.startTimeEpoch ?: 0L,
                 programEnd = channel.currentProgram?.endTimeEpoch ?: 0L,
-                programCategory = channel.currentProgram?.category
+                programCategory = channel.currentProgram?.category,
+                upProgramTitle = channel.upcomingProgram?.title,
+                upProgramDesc = channel.upcomingProgram?.description,
+                upProgramStart = channel.upcomingProgram?.startTimeEpoch ?: 0L,
+                upProgramEnd = channel.upcomingProgram?.endTimeEpoch ?: 0L
             )
         }
     }
@@ -150,6 +173,47 @@ data class SourceConfigEntity(
     }
 }
 
+@Entity(tableName = "layout_presets")
+data class LayoutPresetEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val arrangement: String,
+    val channelIdsCsv: String,
+    val channelNamesCsv: String,
+    val createdAtEpoch: Long
+) {
+    fun toDomain(): MultiviewPreset {
+        val layout = try {
+            MultiviewLayout.valueOf(arrangement)
+        } catch (_: Exception) {
+            MultiviewLayout.QUAD_GRID
+        }
+        val ids = if (channelIdsCsv.isNotBlank()) channelIdsCsv.split(",") else emptyList()
+        val names = if (channelNamesCsv.isNotBlank()) channelNamesCsv.split("|||") else emptyList()
+        return MultiviewPreset(
+            id = id,
+            name = name,
+            arrangement = layout,
+            channelIds = ids,
+            channelNames = names,
+            createdAtEpoch = createdAtEpoch
+        )
+    }
+
+    companion object {
+        fun fromDomain(preset: MultiviewPreset): LayoutPresetEntity {
+            return LayoutPresetEntity(
+                id = preset.id,
+                name = preset.name,
+                arrangement = preset.arrangement.name,
+                channelIdsCsv = preset.channelIds.joinToString(","),
+                channelNamesCsv = preset.channelNames.joinToString("|||"),
+                createdAtEpoch = preset.createdAtEpoch
+            )
+        }
+    }
+}
+
 @Dao
 interface ChannelDao {
     @Query("SELECT * FROM channels ORDER BY CAST(channelNumber AS REAL) ASC, channelNumber ASC")
@@ -193,10 +257,30 @@ interface SourceConfigDao {
 
     @Query("DELETE FROM source_configs WHERE id = :id")
     suspend fun deleteSource(id: String)
+
+    @Query("DELETE FROM source_configs")
+    suspend fun clearAll()
 }
 
-@Database(entities = [ChannelEntity::class, SourceConfigEntity::class], version = 1, exportSchema = false)
+@Dao
+interface LayoutPresetDao {
+    @Query("SELECT * FROM layout_presets ORDER BY createdAtEpoch DESC")
+    fun getAllPresets(): Flow<List<LayoutPresetEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPreset(preset: LayoutPresetEntity)
+
+    @Query("DELETE FROM layout_presets WHERE id = :id")
+    suspend fun deletePreset(id: String)
+}
+
+@Database(
+    entities = [ChannelEntity::class, SourceConfigEntity::class, LayoutPresetEntity::class],
+    version = 2,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun channelDao(): ChannelDao
     abstract fun sourceConfigDao(): SourceConfigDao
+    abstract fun layoutPresetDao(): LayoutPresetDao
 }

@@ -5,14 +5,17 @@ import com.example.core.model.ProgramGuideItem
 import com.example.core.model.SourceType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 class TabloRepository(
-    private val client: TabloClient,
+    val client: TabloClient,
     private val sourceId: String,
     private val sourceName: String
 ) {
     /**
-     * Fetches Tablo channels and converts them into AerioTV domain Channel items
+     * Fetches Tablo channels and converts them into domain Channel items
      */
     suspend fun loadChannels(): TabloResult<List<Channel>> = withContext(Dispatchers.IO) {
         when (val result = client.getChannels()) {
@@ -55,24 +58,38 @@ class TabloRepository(
         val callSign = meta.callSign ?: (meta.network ?: "CH $channelNum")
         val channelTitle = meta.displayTitle
 
-        val firstAiring = detail.guideAirings?.firstOrNull()
+        val airings = detail.guideAirings ?: emptyList()
+        val firstAiring = airings.firstOrNull()
+        val secondAiring = airings.getOrNull(1)
+
+        val now = System.currentTimeMillis()
         val guideProgram = firstAiring?.let { airing ->
-            val now = System.currentTimeMillis()
+            val startEpoch = parseAirDate(airing.airDate) ?: now
             val durationMs = (airing.durationSeconds ?: 3600) * 1000L
             ProgramGuideItem(
                 id = "prog_${airing.airingId ?: System.currentTimeMillis()}",
                 channelId = path,
-                title = airing.showTitle ?: "Live Broadcast",
+                title = airing.displayShowTitle,
                 description = airing.description ?: "Over-the-air television broadcast",
-                startTimeEpoch = now,
-                endTimeEpoch = now + durationMs,
-                category = when {
-                    airing.showTitle?.contains("NFL", ignoreCase = true) == true ||
-                    airing.showTitle?.contains("Football", ignoreCase = true) == true ||
-                    airing.showTitle?.contains("Basketball", ignoreCase = true) == true -> "Sports"
-                    airing.showTitle?.contains("News", ignoreCase = true) == true -> "News"
-                    else -> "Broadcast"
-                },
+                startTimeEpoch = startEpoch,
+                endTimeEpoch = startEpoch + durationMs,
+                category = categorizeShow(airing.displayShowTitle),
+                seasonEpisode = airing.episodeTitle
+            )
+        }
+
+        val upcomingProgram = secondAiring?.let { airing ->
+            val firstEnd = guideProgram?.endTimeEpoch ?: (now + 3600_000L)
+            val startEpoch = parseAirDate(airing.airDate) ?: firstEnd
+            val durationMs = (airing.durationSeconds ?: 3600) * 1000L
+            ProgramGuideItem(
+                id = "prog_up_${airing.airingId ?: (System.currentTimeMillis() + 1)}",
+                channelId = path,
+                title = airing.displayShowTitle,
+                description = airing.description ?: "Upcoming broadcast",
+                startTimeEpoch = startEpoch,
+                endTimeEpoch = startEpoch + durationMs,
+                category = categorizeShow(airing.displayShowTitle),
                 seasonEpisode = airing.episodeTitle
             )
         }
@@ -100,7 +117,29 @@ class TabloRepository(
             groupTitle = "Tablo OTA Broadcast",
             isFavorite = false,
             currentProgram = guideProgram,
+            upcomingProgram = upcomingProgram,
             resolution = meta.resolution ?: "1080i"
         )
+    }
+
+    private fun categorizeShow(title: String): String {
+        val lower = title.lowercase()
+        return when {
+            lower.contains("nfl") || lower.contains("football") || lower.contains("basketball") ||
+                    lower.contains("soccer") || lower.contains("baseball") || lower.contains("sports") -> "Sports"
+            lower.contains("news") || lower.contains("report") || lower.contains("action") -> "News"
+            else -> "Broadcast"
+        }
+    }
+
+    private fun parseAirDate(dateStr: String?): Long? {
+        if (dateStr.isNullOrBlank()) return null
+        return try {
+            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+            format.timeZone = TimeZone.getTimeZone("UTC")
+            format.parse(dateStr)?.time
+        } catch (_: Exception) {
+            null
+        }
     }
 }

@@ -49,12 +49,16 @@ data class TabloChannelMeta(
 data class TabloAiring(
     @Json(name = "airing_id") val airingId: Long? = null,
     @Json(name = "show_title") val showTitle: String? = null,
+    @Json(name = "title") val title: String? = null,
     @Json(name = "episode_title") val episodeTitle: String? = null,
     @Json(name = "description") val description: String? = null,
     @Json(name = "air_date") val airDate: String? = null,
     @Json(name = "duration") val durationSeconds: Int? = null,
     @Json(name = "snapshot_image") val snapshotImage: String? = null
-)
+) {
+    val displayShowTitle: String
+        get() = showTitle ?: (title ?: "OTA Broadcast")
+}
 
 @JsonClass(generateAdapter = true)
 data class TabloWatchResponse(
