@@ -1,0 +1,6 @@
+{
+  "name": "AerioTV",
+  "description": "Native Live TV, IPTV, and Tablo OTA streamer with Sunday Ticket-style multiview",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
